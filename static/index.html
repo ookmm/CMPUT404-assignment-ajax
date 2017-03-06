@@ -38,8 +38,10 @@ function sendJSONXMLHTTPRequest(url, objects, callback) {
         if (xhr.readyState==4) {
             try {
                 if (xhr.status==200) {
-                    //XXX: parse some JSON from the request!
-                    //XXX: Pass the data to the callback!
+                    // Parse some JSON from the request!
+                    var json = JSON.parse(xhr.responseText);
+                    // Pass the data to the callback!
+                    callback(json);
                 }
             } 
             catch(e) {
@@ -47,26 +49,37 @@ function sendJSONXMLHTTPRequest(url, objects, callback) {
             }
         }
     };
-    //XXX: POST to a URL
-    //XXX: set the mimetype and the accept headers!
-    // Remember to use application/json !
+    // POST to a URL
+    xhr.open("POST", url)
+
+    xhr.setRequestHeader("Content-Type", "application/json")
+    xhr.setRequestHeader("Accept", "application/json")
+    xhr.send(JSON.stringify(objects));
 }
 
 
 world = {};
 
-//XXX: TODO Make this prettier!
+// Make this prettier!
 function drawCircle(context,entity) {
     with(context) {
         beginPath();              
         lineWidth = 3;
         var x = entity["x"];
         var y = entity["y"];
-        //moveTo(x,y);
-        fillStyle = entity["colour"];
-        strokeStyle = fillStyle;
-        arc(x, y, (entity["radius"])?entity["radius"]:50, 0, 2.0 * Math.PI, false);  
-        stroke();                                
+        var random_radius = Math.floor((Math.random()*100)+50);
+        var gradient = createLinearGradient(0,0,canvas.width, canvas.height);
+        gradient.addColorStop("0", "pink");
+        gradient.addColorStop("0.5", "purple");
+        gradient.addColorStop("1.0", "blue");
+        strokeStyle = gradient;
+
+
+
+
+        arc(x, y, (entity["radius"])?entity["radius"]:random_radius, 0, 2.0 * Math.PI, false);  
+        stroke();
+        fill()  
     }
 }
 
@@ -82,9 +95,9 @@ function prepEntity(entity) {
 
 function clearFrame() {
     with(context) {
-	moveTo(0,0);
-	fillStyle = "#000";
-	fillRect(0,0,W,H);
+    moveTo(0,0);
+    gradient = "#000";
+    fillRect(0,0,W,H);
     }
 
 }
@@ -118,26 +131,27 @@ function drawFrame() {
 // So use this code, it works well on multitouch devices as well.
 
 function getPosition(e) {
-	if ( e.targetTouches && e.targetTouches.length > 0) {
-		var touch = e.targetTouches[0];
-		var x = touch.pageX  - canvas.offsetLeft;
-		var y = touch.pageY  - canvas.offsetTop;
-		return [x,y];
-	} else {
-		var rect = e.target.getBoundingClientRect();
-		var x = e.offsetX || e.pageX - rect.left - window.scrollX;
-		var y = e.offsetY || e.pageY - rect.top  - window.scrollY;
-		var x = e.pageX  - canvas.offsetLeft;
-		var y = e.pageY  - canvas.offsetTop;
-		return [x,y];
-	}
+    if ( e.targetTouches && e.targetTouches.length > 0) {
+        var touch = e.targetTouches[0];
+        var x = touch.pageX  - canvas.offsetLeft;
+        var y = touch.pageY  - canvas.offsetTop;
+        return [x,y];
+    } else {
+        var rect = e.target.getBoundingClientRect();
+        var x = e.offsetX || e.pageX - rect.left - window.scrollX;
+        var y = e.offsetY || e.pageY - rect.top  - window.scrollY;
+        var x = e.pageX  - canvas.offsetLeft;
+        var y = e.pageY  - canvas.offsetTop;
+        return [x,y];
+    }
 }
 
 
 function addEntity(entity, data) {
     world[entity] = data;
     drawNextFrame(); // (but should we?)
-    //XXX: Send a XHTML Request that updates the entity you just  modified!
+    // Send a XHTML Request that updates the en tity you just  modified!
+    sendJSONXMLHTTPRequest(document.location.origin + "/entity/" + encodeURIComponent(entity), data, function(json){});
 
 }
 
@@ -184,7 +198,7 @@ mouse = (function() {
                 var pos = getPosition(e);
                 var x = pos[0];
                 var y = pos[1];
-	        self.clicked = 1;
+            self.clicked = 1;
                 self.callListeners(self.mousedowners,x,y,self.clicked,e);
                 //addEntityWithoutName({'x':x,'y':y,'colour':'red'});
             }
@@ -196,8 +210,8 @@ mouse = (function() {
                 var pos = getPosition(e);
                 var x = pos[0];
                 var y = pos[1];
-	        //self.poppin(x,y);
-	        self.clicked = 0;
+            //self.poppin(x,y);
+            self.clicked = 0;
                 self.selected = -1;
                 self.callListeners(self.mouseuppers,x,y,self.clicked,e);
                 //addEntityWithoutName({'x':x,'y':y,'colour':'blue'});
@@ -207,29 +221,29 @@ mouse = (function() {
             self.lasttouch = e;                                         
             return self.mousedown(e);
         },
-	touchend: function(e) {
+    touchend: function(e) {
             var touch = (self.lasttouch)?self.lasttouch:e;
             return self.mouseup(touch);
-	},
-	mousemove: function(e) {
+    },
+    mousemove: function(e) {
             e.preventDefault();
             if (self.wasClicked(e)) {
                 var pos = getPosition(e);
                 var x = pos[0];
                 var y = pos[1];
-	        if (self.clicked != 0) {
-	            //self.squeakin(x,y);
+            if (self.clicked != 0) {
+                //self.squeakin(x,y);
                     self.callListeners(self.mousedraggers,x,y,self.clicked,e);
-	        }
+            }
                 self.callListeners(self.mousemovers,x,y,self.clicked,e);
             }            
-	},
-	touchmove: function(e) {
+    },
+    touchmove: function(e) {
             self.lasttouch = e;                                         
             return self.mousemove(e);
-	},
-	// Install the mouse listeners
-	mouseinstall: function() {
+    },
+    // Install the mouse listeners
+    mouseinstall: function() {
             canvas.addEventListener("mousedown",  self.mousedown, false);
             canvas.addEventListener("mousemove",  self.mousemove, false);
             canvas.addEventListener("mouseup",    self.mouseup, false);
@@ -237,31 +251,47 @@ mouse = (function() {
             canvas.addEventListener("touchstart", self.touchstart, false);
             canvas.addEventListener("touchmove",  self.touchmove, false);
             canvas.addEventListener("touchend",   self.touchend, false);
-	}
+    }
     };
     // Force install!
     self.mouseinstall();
     return self;
 })();
 
+
+
 // Add the application specific mouse listeners!
-//XXX: TODO Make these prettier!
+// Make these prettier!
+
 mouse.mousedowners.push(function(x,y,clicked,e) {
-    addEntityWithoutName({'x':x,'y':y,'colour':'blue'});
+    var random_radius = Math.floor((Math.random()*100)+50);
+
+    addEntityWithoutName({'x':x,'y':y,'colour':'yellow', 'radius': random_radius});
 });
 
 mouse.mouseuppers.push(function(x,y,clicked,e) {
-    addEntityWithoutName({'x':x,'y':y,'colour':'red'});
+    var random_radius = Math.floor((Math.random()*5)+10);
+
+    addEntityWithoutName({'x':x,'y':y,'colour':'red', 'radious': random_radius});
 });
 
 mouse.mousedraggers.push(function(x,y,clicked,e) {
-    addEntityWithoutName({'x':x,'y':y,'colour':'green',
-                          'radius':10});
+
+    var random_radius = Math.floor((Math.random()*100)+50);
+
+    addEntityWithoutName({'x':x,'y':y,'colour':'green','stroke-width' : 3,
+                          'radius':random_radius});
 });
 
 
 function update() {
-    //XXX: TODO Get the world from the webservice using a XMLHTTPRequest
+    // Get the world from the webservice using a XMLHTTPRequest
+    sendJSONXMLHTTPRequest(document.location.origin + "/world", null, 
+        function(json){
+            world = json;
+            drawNextFrame();
+        }
+    );
     drawFrame();
 }
 
